@@ -1,0 +1,16 @@
+funcionario_id,nome,email,cpf,data_nascimento,data_admissao,departamento_id,cargo_id,salario,status
+1,Ana Paula Silva,ana.silva@techcorp.com,123.456.789-01,1990-03-15,2018-06-01,1,3,8500.00,ATIVO
+2,Carlos Eduardo Mendes,carlos.mendes@techcorp.com,234.567.890-12,1985-07-22,2016-02-15,2,5,12000.00,ATIVO
+3,Fernanda Costa,fernanda.costa@techcorp.com,345.678.901-23,1992-11-08,2020-03-10,1,2,6200.00,ATIVO
+4,Ricardo Alves,ricardo.alves@techcorp.com,456.789.012-34,1980-05-30,2014-09-01,3,6,15000.00,ATIVO
+5,Juliana Martins,juliana.martins@techcorp.com,567.890.123-45,1995-01-18,2022-01-05,1,1,4800.00,ATIVO
+6,Marcos Rodrigues,marcos.rodrigues@techcorp.com,678.901.234-56,1988-09-12,2017-07-20,2,4,9800.00,INATIVO
+7,Patrícia Lima,patricia.lima@techcorp.com,789.012.345-67,1991-04-25,2019-11-03,4,3,8200.00,ATIVO
+8,Bruno Ferreira,bruno.ferreira@techcorp.com,890.123.456-78,1987-12-01,2015-04-14,3,5,11500.00,ATIVO
+9,Camila Souza,camila.souza@techcorp.com,901.234.567-89,1993-06-07,2021-08-22,4,2,6500.00,ATIVO
+10,Diego Nascimento,diego.nascimento@techcorp.com,012.345.678-90,1986-02-19,2013-12-09,2,6,14500.00,ATIVO
+11,Larissa Oliveira,larissa.oliveira@techcorp.com,111.222.333-44,1994-08-14,2022-05-16,1,1,4900.00,ATIVO
+12,Thiago Pereira,thiago.pereira@techcorp.com,222.333.444-55,1983-10-28,2012-03-07,3,7,18000.00,ATIVO
+13,Amanda Carvalho,amanda.carvalho@techcorp.com,333.444.555-66,1996-03-31,2023-02-01,4,1,4700.00,ATIVO
+14,Felipe Santos,felipe.santos@techcorp.com,444.555.666-77,1989-07-16,2016-10-25,2,4,9500.00,INATIVO
+15,Isabela Torres,isabela.torres@techcorp.com,555.666.777-88,1997-12-05,2023-07-10,1,1,4600.00,ATIVO
