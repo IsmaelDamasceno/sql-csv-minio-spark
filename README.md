@@ -70,6 +70,7 @@ O PostgreSQL executa `bikestores.sql` automaticamente na primeira inicializaçã
 uv venv
 source .venv/bin/activate
 uv sync
+uv sync --group docs
 ```
 
 ## Executando o Projeto
