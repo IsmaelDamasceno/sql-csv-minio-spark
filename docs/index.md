@@ -76,17 +76,17 @@ O PostgreSQL executa `bikestores.sql` automaticamente na **primeira inicializaç
 
 O dataset **BikeStores** é composto por 9 tabelas que modelam o sistema de pedidos de uma rede de lojas de bicicletas.
 
-| Tabela | Descrição | Partição no bronze |
-|--------|-----------|-------------------|
-| `brands` | Marcas de bicicletas | — |
-| `categories` | Categorias de produtos | — |
-| `customers` | Cadastro de clientes | `state` |
-| `stores` | Lojas físicas | — |
-| `staffs` | Funcionários | — |
-| `products` | Catálogo de produtos | `model_year` |
-| `stocks` | Estoque por loja/produto | — |
-| `orders` | Pedidos de venda | `order_status` |
-| `order_items` | Itens de cada pedido | — |
+| Tabela | Descrição |
+|--------|-----------|
+| `brands` | Marcas de bicicletas
+| `categories` | Categorias de produtos
+| `customers` | Cadastro de clientes
+| `stores` | Lojas físicas
+| `staffs` | Funcionários
+| `products` | Catálogo de produtos
+| `stocks` | Estoque por loja/produto
+| `orders` | Pedidos de venda
+| `order_items` | Itens de cada pedido
 
 ---
 
