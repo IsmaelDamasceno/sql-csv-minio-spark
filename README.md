@@ -73,6 +73,23 @@ uv sync
 uv sync --group docs
 ```
 
+
+### 3. Gerando Docs (MkDocs)
+
+A documentação completa está em `docs/` e cobre a contextualização do projeto, a arquitetura, o modelo de dados e os detalhes de cada operação para Delta Lake e Iceberg.
+
+```bash
+# Build estático
+uv run mkdocs build
+
+# Servir localmente
+uv run mkdocs serve
+# Acesse: http://127.0.0.1:8000
+
+# Publicar no GitHub Pages
+uv run mkdocs gh-deploy
+```
+
 ## Executando o Projeto
 
 Execute os notebooks **em ordem**:
