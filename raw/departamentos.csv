@@ -1,5 +1,0 @@
-departamento_id,nome_departamento,sigla,centro_custo,gerente_id,orcamento_anual
-1,Tecnologia da Informação,TI,CC-001,2,850000.00
-2,Gestão e Estratégia,GE,CC-002,10,1200000.00
-3,Engenharia de Produto,EP,CC-003,12,980000.00
-4,Recursos Humanos,RH,CC-004,7,430000.00

@@ -4,10 +4,10 @@
 
 **Apache Spark** é um engine de processamento de dados em larga escala, open-source, criado na UC Berkeley em 2009 e doado à Apache Software Foundation em 2013. Ele processa dados **em memória** (in-memory), sendo até 100× mais rápido que o MapReduce para operações iterativas.
 
-Spark não é um sistema de armazenamento — ele **processa** dados de fontes externas como HDFS, S3, bancos de dados relacionais, Kafka, e formatos de tabela aberta como **Delta Lake** e **Apache Iceberg**.
+Spark não é um sistema de armazenamento — ele **processa** dados de fontes externas como S3, bancos de dados relacionais via JDBC, Kafka, e formatos de tabela aberta como **Delta Lake**.
 
 !!! info "Versão utilizada neste projeto"
-    **Apache Spark 3.5.0** com **PySpark 3.5.0**, Delta Spark 3.1.0 e Iceberg Spark Runtime 1.5.0.
+    **Apache Spark 3.5.0** com **PySpark 3.5.0** e **Delta Spark 3.1.0**.
 
 ---
 
@@ -58,7 +58,7 @@ Neste projeto, o Spark roda em **modo local** (`local[*]`), onde Driver e Execut
 | **API** | Funcional (map, filter, reduce) | SQL-like (select, filter, groupBy) |
 | **Quando usar** | Transformações não estruturadas | Dados tabulares (99% dos casos) |
 
-Este projeto usa exclusivamente **DataFrames**, que são a API moderna e recomendada do Spark.
+Este projeto usa exclusivamente **DataFrames** e a **DataFrame API (Column API)**, que são a abordagem moderna e recomendada do Spark.
 
 ### Lazy Evaluation
 
@@ -66,163 +66,181 @@ O Spark não executa transformações imediatamente. Ele constrói um grafo de o
 
 ```python
 # Transformações (lazy — não executam ainda)
-df = spark.read.csv('funcionarios.csv', header=True, inferSchema=True)
-df_ativos = df.filter("status = 'ATIVO'")
-df_result = df_ativos.select('nome', 'salario')
+df = spark.read.format("delta").load(f"{BRONZE_BUCKET}/products")
+df_2016 = df.filter(col("model_year") == 2016)
+df_result = df_2016.select("product_id", "product_name", "list_price")
 
 # Action — aqui o Spark executa TODO o plano
-df_result.show()        # dispara a execução
-df_result.count()       # outra action
-df_result.write.parquet(...)  # outra action
+df_result.show()     # dispara a execução
+df_result.count()    # outra action
 ```
 
 ### Partições
 
-O Spark distribui os dados em **partições** — fatias do DataFrame que podem ser processadas em paralelo por Executors diferentes. O particionamento físico é controlado por `.partitionBy()` na escrita:
+O Spark distribui os dados em **partições** — fatias do DataFrame processadas em paralelo. O particionamento físico no Delta Lake é controlado por `.partitionBy()` na escrita:
 
 ```python
-df.write.format('delta').partitionBy('status').save(path)
+df.write.format("delta").partitionBy("model_year").save(path)
 ```
 
-No Delta Lake e Iceberg, as partições são pastas no sistema de arquivos:
+Isso gera pastas no MinIO:
 ```
-warehouse/delta/funcionarios/
-├── status=ATIVO/
+s3a://bronze/products/
+├── model_year=2016/
 │   └── part-00000-....parquet
-└── status=INATIVO/
+├── model_year=2017/
+│   └── part-00000-....parquet
+└── model_year=2018/
     └── part-00000-....parquet
 ```
 
 ---
 
-## SparkSession
+## SparkSession com Delta Lake e MinIO
 
-`SparkSession` é o ponto de entrada único para todas as APIs do Spark desde a versão 2.0. Ela unifica `SQLContext`, `HiveContext` e `SparkContext`.
+`SparkSession` é o ponto de entrada único para todas as APIs do Spark. A configuração deste projeto conecta três sistemas: **Delta Lake**, **MinIO (S3A)** e, no notebook de extração, o **PostgreSQL via JDBC**.
 
-### Configuração do Projeto com Delta Lake
+### Notebook 01 — Extração (PostgreSQL + MinIO)
 
 ```python
 from pyspark.sql import SparkSession
 from delta import configure_spark_with_delta_pip
 
+MINIO_ENDPOINT   = "http://localhost:9010"
+MINIO_ACCESS_KEY = "minioadmin"
+MINIO_SECRET_KEY = "minioadmin"
+
 builder = (
     SparkSession.builder
-    .appName('Pipeline_RH_DeltaLake')
-    # Habilita a extensão SQL do Delta (MERGE, VACUUM, RESTORE, etc.)
-    .config('spark.sql.extensions', 'io.delta.sql.DeltaSparkSessionExtension')
-    # Substitui o catálogo padrão pelo catálogo Delta
-    .config('spark.sql.catalog.spark_catalog', 'org.apache.spark.sql.delta.catalog.DeltaCatalog')
-    # Diretório do warehouse — SEMPRE usar caminho absoluto
-    .config('spark.sql.warehouse.dir', os.path.abspath('warehouse'))
+    .appName("extract_to_landing")
+    .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+    .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+    .config("spark.hadoop.fs.s3a.endpoint",               MINIO_ENDPOINT)
+    .config("spark.hadoop.fs.s3a.access.key",             MINIO_ACCESS_KEY)
+    .config("spark.hadoop.fs.s3a.secret.key",             MINIO_SECRET_KEY)
+    .config("spark.hadoop.fs.s3a.path.style.access",      "true")
+    .config("spark.hadoop.fs.s3a.impl",                   "org.apache.hadoop.fs.s3a.S3AFileSystem")
+    .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false")
 )
 
-spark = configure_spark_with_delta_pip(builder).getOrCreate()
+spark = configure_spark_with_delta_pip(
+    builder,
+    extra_packages=[
+        "org.postgresql:postgresql:42.7.3",       # (1)
+        "org.apache.hadoop:hadoop-aws:3.3.4",
+        "com.amazonaws:aws-java-sdk-bundle:1.12.262",
+    ],
+).getOrCreate()
 ```
 
-### Configuração com Apache Iceberg
+1. O driver JDBC do PostgreSQL precisa estar em `extra_packages` — **não** em `spark.jars.packages`, pois `configure_spark_with_delta_pip` sobrescreveria esse config.
+
+### Notebooks 02 e 03 — Apenas MinIO
 
 ```python
-ICEBERG_WAREHOUSE = '/tmp/iceberg/warehouse'
-
-spark = (
-    SparkSession.builder
-    .appName('Pipeline_RH_Iceberg')
-    # Extensão SQL do Iceberg (INSERT, UPDATE, DELETE, MERGE INTO)
-    .config('spark.sql.extensions',
-            'org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions')
-    # Define o catálogo 'local' como um HadoopCatalog (sem Hive Metastore)
-    .config('spark.sql.catalog.local', 'org.apache.iceberg.spark.SparkCatalog')
-    .config('spark.sql.catalog.local.type', 'hadoop')
-    .config('spark.sql.catalog.local.warehouse', ICEBERG_WAREHOUSE)
-    # Baixa o runtime do Iceberg via Maven na inicialização
-    .config('spark.jars.packages',
-            'org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0')
-    .getOrCreate()
-)
+spark = configure_spark_with_delta_pip(
+    builder,
+    extra_packages=[
+        "org.apache.hadoop:hadoop-aws:3.3.4",
+        "com.amazonaws:aws-java-sdk-bundle:1.12.262",
+    ],
+).getOrCreate()
 ```
 
+!!! warning "`configure_spark_with_delta_pip` e `spark.jars.packages`"
+    `configure_spark_with_delta_pip` chama `.config("spark.jars.packages", ...)` internamente para adicionar o Delta. Se você também setar `spark.jars.packages` no builder, a função **sobrescreve seu valor**. Use sempre `extra_packages` para adicionar JARs extras.
+
 !!! warning "`.getOrCreate()` e sessões existentes"
-    Se uma `SparkSession` já existe no processo (ex: kernel Jupyter não reiniciado), `.getOrCreate()` **retorna a sessão existente e ignora todas as configs novas**. Sempre reinicie o kernel antes de mudar configurações de extensão.
+    Se uma `SparkSession` já existe no kernel Jupyter, `.getOrCreate()` retorna a sessão existente e **ignora todas as configs novas**. Reinicie o kernel antes de alterar qualquer configuração.
 
 ---
 
-## API PySpark — Operações Essenciais
+## DataFrame API — Operações Essenciais
 
 ### Leitura
 
 ```python
-# CSV com inferência de schema
-df = spark.read.csv('arquivo.csv', header=True, inferSchema=True)
+# Via JDBC (PostgreSQL)
+df = (
+    spark.read
+    .jdbc(url=JDBC_URL, table="products", properties=jdbc_props)
+)
 
-# Delta Lake
-df = spark.read.format('delta').load('/caminho/da/tabela')
+# CSV do MinIO (landing-zone)
+df = (
+    spark.read
+    .option("header", "true")
+    .option("inferSchema", "true")
+    .csv("s3a://landing-zone/products")
+)
 
-# Iceberg
-df = spark.table('local.rh.funcionarios')
+# Delta Lake (bronze)
+df = spark.read.format("delta").load("s3a://bronze/products")
 
 # Delta com Time Travel
-df = spark.read.format('delta').option('versionAsOf', 0).load('/caminho')
+df = (
+    spark.read
+    .format("delta")
+    .option("versionAsOf", 0)
+    .load("s3a://bronze/products")
+)
 ```
 
-### Transformações Comuns
+### Transformações
 
 ```python
-from pyspark.sql.functions import col, to_date, current_timestamp, lit
-from pyspark.sql.types import DoubleType
+from pyspark.sql.functions import col, current_timestamp, lit, round as spark_round
+from pyspark.sql.types import IntegerType, DoubleType
 
 df_clean = (
     df
-    .withColumn('data_admissao', to_date(col('data_admissao'), 'yyyy-MM-dd'))
-    .withColumn('salario', col('salario').cast(DoubleType()))
-    .withColumn('pipeline_ts', current_timestamp())
-    .withColumn('source', lit('CSV_LEGADO'))
-    .filter("status = 'ATIVO'")
-    .select('funcionario_id', 'nome', 'salario', 'status', 'pipeline_ts', 'source')
+    .withColumn("bronze_ingested_at", current_timestamp())
+    .withColumn("source_system",      lit("postgres"))
+    .withColumn("product_id",         col("product_id").cast(IntegerType()))
+    .withColumn("list_price",         col("list_price").cast(DoubleType()))
+    .filter(col("model_year") >= 2016)
+    .select("product_id", "product_name", "brand_id", "model_year", "list_price")
 )
 ```
 
 ### Escrita
 
 ```python
-# Sobrescreve a tabela (carga inicial)
-df.write.format('delta').mode('overwrite').partitionBy('status').save(path)
+# Sobrescreve (carga inicial)
+df.write.format("delta").mode("overwrite").partitionBy("model_year").save(path)
 
-# Adiciona dados (carga incremental)
-df.write.format('delta').mode('append').partitionBy('status').save(path)
-
-# Iceberg
-df.writeTo('local.rh.funcionarios').append()
-```
-
-### Spark SQL
-
-O Spark permite escrever SQL diretamente sobre tabelas registradas no catálogo:
-
-```python
-# Registra um DataFrame como view temporária
-df.createOrReplaceTempView('source_rh')
-
-# Executa SQL sobre a view
-resultado = spark.sql("""
-    SELECT departamento_id, COUNT(*) as headcount, AVG(salario) as salario_medio
-    FROM source_rh
-    WHERE status = 'ATIVO'
-    GROUP BY departamento_id
-    ORDER BY salario_medio DESC
-""")
-resultado.show()
+# Adiciona (carga incremental)
+df.write.format("delta").mode("append").partitionBy("model_year").save(path)
 ```
 
 ---
 
-## Comparação: Delta Lake vs Apache Iceberg
+## DataFrame API vs SQL cru
 
-| Característica | Delta Lake | Apache Iceberg |
-|---|---|---|
-| **Origem** | Databricks (open-sourced 2019) | Netflix (doado à Apache 2018) |
-| **Transaction Log** | `_delta_log/` (JSON + Parquet checkpoint) | Metadata JSON + Manifest files |
-| **SQL DML** | UPDATE, DELETE, MERGE via extensão | UPDATE, DELETE, MERGE via extensão |
-| **Time Travel** | `versionAsOf`, `timestampAsOf` | `snapshot-id`, `as-of-timestamp` |
-| **Schema Evolution** | `mergeSchema` option | `ALTER TABLE ADD/DROP COLUMN` |
-| **Catálogo** | Spark Catalog (spark_catalog) | Iceberg Catalog (Hadoop, Hive, REST) |
-| **Particionamento** | Explícito por coluna | Explícito ou Hidden Partitioning |
+Este projeto adota a **DataFrame API** para todas as operações, evitando strings SQL. A vantagem é que os erros aparecem em tempo de execução com stack trace Python, e as expressões são verificáveis com autocomplete.
+
+| Operação | SQL cru | DataFrame API |
+|----------|---------|---------------|
+| Filtro | `"status = 'ATIVO'"` | `col("status") == "ATIVO"` |
+| Condição composta | `"a = 1 AND b IS NULL"` | `(col("a") == 1) & col("b").isNull()` |
+| Expressão numérica | `"price * 0.85"` | `col("price") * 0.85` |
+| Função | `"current_timestamp()"` | `current_timestamp()` |
+| Arredondamento | `"ROUND(price, 2)"` | `spark_round(col("price"), 2)` |
+
+Exemplo de UPDATE com DataFrame API via `DeltaTable`:
+
+```python
+from delta.tables import DeltaTable
+from pyspark.sql.functions import col, current_timestamp
+from pyspark.sql.functions import round as spark_round
+
+delta_products = DeltaTable.forPath(spark, "s3a://bronze/products")
+
+delta_products.update(
+    condition=col("model_year") == 2016,
+    set={
+        "list_price":         spark_round(col("list_price") * 0.85, 2),
+        "bronze_ingested_at": current_timestamp(),
+    },
+)
+```

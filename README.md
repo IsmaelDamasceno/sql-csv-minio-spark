@@ -1,217 +1,154 @@
-# Pipeline de Migração de Dados de RH — Delta Lake & Apache Iceberg
+# Projeto Apache Spark + Delta Lake + PostgreSQL + MinIO
 
-[![Lint & Tests](https://img.shields.io/github/actions/workflow/status/jlsilva01/projeto-ed-satc/ci.yml?branch=main)](https://github.com/jlsilva01/projeto-ed-satc/actions)
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen.svg)](https://github.com/jlsilva01/projeto-ed-satc)
-[![Docker Pulls](https://img.shields.io/docker/pulls/jlsilva01/projeto-ed-satc)](https://hub.docker.com/r/jlsilva01/projeto-ed-satc)
-[![Docs](https://img.shields.io/badge/docs-mkdocs-blue)](https://jlsilva01.github.io/projeto-ed-satc/)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+Projeto desenvolvido para o curso de Engenharia de Dados com Spark e Delta Lake, lendo dados de um banco PostgreSQL e processando no MinIO em duas camadas: **landing-zone** (CSV) e **bronze** (Delta Lake).
 
-Projeto da disciplina de **Engenharia de Dados** do curso de Engenharia de Software da **UNISATC**. Implementa uma pipeline completa de migração e modernização de dados de RH da empresa fictícia **TechCorp**, utilizando **PySpark** com os formatos de tabela abertos **Delta Lake** e **Apache Iceberg**.
+1. **Extração** de tabelas do PostgreSQL via JDBC
+2. **Carga** no MinIO (Object Storage compatível com S3) no formato CSV — camada `landing-zone`
+3. **Conversão** para Delta Lake — camada `bronze`
+4. **Manipulação** dos dados com operações DML (INSERT, UPDATE, DELETE, MERGE) usando a DataFrame API do Spark
 
-A pipeline cobre as operações fundamentais de qualquer plataforma de dados moderna: **INSERT**, **UPDATE**, **DELETE** e **MERGE (UPSERT)**, além de **Time Travel** e **Schema Evolution**.
-
----
-
-## Desenho de Arquitetura
+## Arquitetura
 
 ```
-raw/ (CSVs legado)
-  └── funcionarios.csv
-  └── departamentos.csv
-  └── cargos.csv
-  └── folha_pagamento.csv
-        │
-        ▼
-  PySpark DataFrame API
-  (leitura + transformação + metadados de auditoria)
-        │
-        ├──► Delta Lake  (warehouse/delta/)
-        │       └── INSERT / UPDATE / DELETE / MERGE / Time Travel
-        │
-        └──► Apache Iceberg  (/tmp/iceberg/warehouse)
-                └── INSERT / UPDATE / DELETE / MERGE INTO / Snapshots / Schema Evolution
-```
-
----
-
-## Fonte de Dados
-
-Quatro arquivos CSV exportados do sistema legado de RH:
-
-| Arquivo | Registros | Descrição |
-|---|---|---|
-| `funcionarios.csv` | 15 | Cadastro completo de colaboradores |
-| `departamentos.csv` | 4 | Estrutura organizacional |
-| `cargos.csv` | 7 | Plano de cargos e salários |
-| `folha_pagamento.csv` | 26 | Folha de Jan e Fev/2024 |
-
----
-
-## Pré-requisitos e ferramentas utilizadas
-
-- **Linguagem:** Python 3.11+
-- **Processamento distribuído:** PySpark 3.5.0
-- **Formatos de tabela:** Delta Lake 3.1.0 · Apache Iceberg 0.7+ (via `pyiceberg[pyarrow,pandas]`)
-- **Gerenciador de pacotes:** [uv](https://github.com/astral-sh/uv)
-- **Documentação:** MkDocs + mkdocs-material
-
----
-
-## Instalação
-
-### 1. Clonar o repositório
-
-```bash
-git clone https://github.com/jlsilva01/projeto-ed-satc.git
-cd projeto-ed-satc
+┌─────────────────┐     ┌──────────────────┐     ┌───────────────────┐
+│   PostgreSQL    │────▶│   MinIO (S3)     │────▶│   MinIO (S3)      │
+│                 │     │   landing-zone/  │     │   bronze/         │
+│   BikeStores    │     │   (CSVs)         │     │   (Delta Tables)  │
+│   9 tabelas     │     │                  │     │                   │
+│                 │     │   1 CSV/tabela   │     │   INSERT/UPDATE   │
+│                 │     │                  │     │   DELETE/MERGE    │
+└─────────────────┘     └──────────────────┘     └───────────────────┘
+                             Notebook 01              Notebooks 02/03
+                             (Extração)               (Delta + DML)
 ```
 
 ## Pré-requisitos
 
-### Java (JDK 17+)
+- **Linux** (Ubuntu 24.04 ou WSL do Windows 11)
+- **Docker** e **Docker Compose** v2+
+- **Python 3.11** (PySpark 3.5 requer Python ≤ 3.12)
+- **Java 11** (OpenJDK)
+- **UV** (gerenciador de pacotes Python) — [instalação](https://github.com/astral-sh/uv)
 
-O PySpark exige o Java Development Kit instalado e configurado no `PATH`.
+## Setup do Ambiente
 
-**Linux (Ubuntu/Debian):**
+### 1. Subir os Containers (PostgreSQL + MinIO)
+
 ```bash
-sudo apt update && sudo apt install -y openjdk-17-jdk
-java -version
+docker compose up -d
 ```
 
-**Windows:**
-Baixe o instalador em [adoptium.net](https://adoptium.net/) e siga o assistente. Após a instalação, confirme:
-```powershell
-java -version
-```
+**Containers criados:**
 
----
+| Container            | Imagem             | Portas         |
+|---------------------|--------------------|----------------|
+| engdados_postgres   | `postgres:16`      | `5432`         |
+| engdados_minio      | `minio/minio`      | `9010`, `9011` |
+| engdados_minio_init | `minio/mc`         | —              |
 
-### uv
+O container `minio_init` cria automaticamente os buckets `landing-zone` e `bronze` na primeira execução.
+O PostgreSQL executa `bikestores.sql` automaticamente na primeira inicialização do volume, criando e populando todas as 9 tabelas.
 
-`uv` é o gerenciador de pacotes e ambientes virtuais utilizado no projeto.
+**Credenciais:**
 
-**Linux/macOS:**
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-source ~/.local/bin/env   # ou reinicie o terminal
-uv --version
-```
+| Serviço    | Usuário      | Senha        | Database |
+|------------|--------------|--------------|----------|
+| PostgreSQL | `engdados`   | `engdados`   | `rh`     |
+| MinIO      | `minioadmin` | `minioadmin` | —        |
 
-**Windows (PowerShell):**
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-uv --version
-```
+**URLs:**
 
-### Instalar dependências
+| Serviço         | URL                    |
+|-----------------|------------------------|
+| PostgreSQL      | `localhost:5432`       |
+| MinIO API (S3)  | `http://localhost:9010`|
+| MinIO Console   | `http://localhost:9011`|
+
+### 2. Configurar o Ambiente Python
 
 ```bash
 uv venv
-source .venv/bin/activate   # Linux/macOS
-# .venv\Scripts\activate    # Windows
-
+source .venv/bin/activate
 uv sync
 ```
 
----
+## Executando o Projeto
 
-## Como executar
+Execute os notebooks **em ordem**:
 
-### Pipeline Delta Lake
+| # | Notebook | Descrição |
+|---|----------|-----------|
+| 1 | `01_extract_to_landing.ipynb` | Lê as 9 tabelas do PostgreSQL via JDBC e grava CSV no MinIO (`landing-zone`) |
+| 2 | `02_landing_to_bronze.ipynb` | Lê os CSVs do `landing-zone` e converte para Delta Lake no bucket `bronze` |
+| 3 | `03_bronze_dml.ipynb` | Executa DML (INSERT, UPDATE, DELETE, MERGE), Time Travel e histórico de versões |
 
-```bash
-uv run jupyter notebook notebooks/pipeline_delta_lake.ipynb
-```
-
-Ou execute como script Python:
-
-```bash
-uv run python notebooks/pipeline_delta_lake.py
-```
-
-### Pipeline Apache Iceberg
-
-```bash
-uv run jupyter notebook notebooks/pipeline_iceberg.ipynb
-```
-
-As tabelas Delta são gravadas em `warehouse/delta/` e as tabelas Iceberg em `/tmp/iceberg/warehouse`.
-
----
+> **Importante:** Selecione o ambiente virtual (`.venv`) como Kernel do Jupyter antes de executar.
 
 ## Estrutura do Projeto
 
 ```
-projeto-ed-satc/
-├── raw/                        # CSVs de origem (dados fictícios)
-│   ├── funcionarios.csv
-│   ├── departamentos.csv
-│   ├── cargos.csv
-│   └── folha_pagamento.csv
+eng-de-dados/
+├── docker-compose.yml              # PostgreSQL 16 + MinIO
+├── bikestores.sql                  # DDL + DML — recria o banco do zero
+├── pyproject.toml                  # Dependências Python (UV)
+├── .python-version                 # Python 3.11
+├── raw/                            # CSVs de referência (BikeStores)
+│   ├── brands.csv
+│   ├── categories.csv
+│   ├── customers.csv
+│   ├── stores.csv
+│   ├── staffs.csv
+│   ├── products.csv
+│   ├── stocks.csv
+│   ├── orders.csv
+│   └── order_items.csv
 ├── notebooks/
-│   ├── pipeline_delta_lake.ipynb   # Pipeline completa com Delta Lake
-│   └── pipeline_iceberg.ipynb      # Pipeline completa com Apache Iceberg
-├── warehouse/
-│   └── delta/                  # Tabelas Delta Lake (geradas na execução)
-├── docs/                       # Documentação MkDocs
-├── pyproject.toml
+│   ├── 01_extract_to_landing.ipynb # Extração: PostgreSQL → MinIO (CSV)
+│   ├── 02_landing_to_bronze.ipynb  # Conversão: CSV → Delta Lake
+│   └── 03_bronze_dml.ipynb         # DML: INSERT, UPDATE, DELETE, MERGE
 └── README.md
 ```
 
----
+## Domínio dos Dados
 
-## Operações implementadas
+O dataset utilizado é o **BikeStores** — sistema fictício de lojas de bicicletas com as seguintes tabelas:
 
-Ambas as pipelines implementam o mesmo conjunto de operações sobre as tabelas de RH:
+| Tabela        | Descrição                                 | Partição no bronze |
+|---------------|-------------------------------------------|--------------------|
+| `brands`      | Marcas de bicicletas                      | —                  |
+| `categories`  | Categorias de produtos                    | —                  |
+| `customers`   | Clientes                                  | `state`            |
+| `stores`      | Lojas físicas                             | —                  |
+| `staffs`      | Funcionários                              | —                  |
+| `products`    | Catálogo de produtos                      | `model_year`       |
+| `stocks`      | Estoque por loja e produto                | —                  |
+| `orders`      | Pedidos de venda                          | `order_status`     |
+| `order_items` | Itens de cada pedido                      | —                  |
 
-| Operação | Delta Lake | Apache Iceberg |
-|---|---|---|
-| **INSERT** (carga inicial) | `write.format('delta').mode('overwrite')` | `writeTo(...).append()` |
-| **INSERT** (incremental) | `write.format('delta').mode('append')` | `INSERT INTO ... VALUES` |
-| **UPDATE** | `DeltaTable.update()` · `UPDATE` SQL | `UPDATE` SQL |
-| **DELETE** | `DeltaTable.delete()` · `DELETE` SQL | `DELETE FROM` SQL |
-| **MERGE (UPSERT)** | `DeltaTable.merge(...).whenMatched...whenNotMatched` | `MERGE INTO` SQL |
-| **Time Travel** | `.option('versionAsOf', N)` | `.option('snapshot-id', id)` |
-| **Histórico** | `DeltaTable.history()` | `funcionarios.snapshots` |
-| **Schema Evolution** | — | `ALTER TABLE ... ADD COLUMN` |
+## Tecnologias Utilizadas
 
----
+- **Apache Spark 3.5.0** (PySpark) — Motor de processamento distribuído
+- **Delta Lake 3.1.0** — Formato de armazenamento com suporte ACID e Time Travel
+- **MinIO** — Object Storage compatível com S3
+- **PostgreSQL 16** — Banco de dados relacional
+- **Docker Compose** — Orquestração de containers
+- **Python 3.11** com UV
 
-## Documentação (MkDocs)
+## Conceitos Demonstrados
 
-A documentação completa está em `docs/` e cobre a contextualização do projeto, a arquitetura, o modelo de dados e os detalhes de cada operação para Delta Lake e Iceberg.
+- **Extração de dados** de banco relacional via JDBC
+- **Object Storage** como repositório intermediário (MinIO/S3)
+- **Arquitetura Medalhão** (Landing Zone → Bronze)
+- **Delta Lake** como formato de armazenamento lakehouse
+- **Transações ACID** em data lakes
+- **DataFrame API** para transformações e DML
+- **DML** (INSERT, UPDATE, DELETE, MERGE/UPSERT) em tabelas Delta
+- **Versionamento** de dados (History e Time Travel)
 
-```bash
-# Servir localmente
-uv run mkdocs serve
-# Acesse: http://127.0.0.1:8000
+## Links e Referências
 
-# Build estático
-uv run mkdocs build
-
-# Publicar no GitHub Pages
-uv run mkdocs gh-deploy
-```
-
-## Colaboração
-
-1. Abra uma **issue** para discutir sua feature ou correção.
-2. Crie um branch:
-
-   ```bash
-   git checkout -b feature/nome-da-feature
-   ```
-
-3. Faça suas alterações e commit seguindo o [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
-4. Envie um **pull request** para `main` e aguarde revisão.
-
----
-
-## Referências
-
-- [Delta Lake Documentation](https://docs.delta.io/)
-- [Apache Iceberg Documentation](https://iceberg.apache.org/docs/latest/)
-- [PySpark Documentation](https://spark.apache.org/docs/latest/api/python/)
-- [uv — Python package manager](https://github.com/astral-sh/uv)
-- [MkDocs Material Theme](https://squidfunk.github.io/mkdocs-material/)
+- [Delta Lake - Documentação](https://docs.delta.io/latest/index.html)
+- [Delta Lake - Releases](https://docs.delta.io/latest/releases.html)
+- [MinIO - Documentação](https://min.io/docs/minio/linux/index.html)
+- [PostgreSQL - Docker Hub](https://hub.docker.com/_/postgres)
+- [Database Kaggle](https://www.kaggle.com/datasets/dillonmyrick/bike-store-sample-database/data)

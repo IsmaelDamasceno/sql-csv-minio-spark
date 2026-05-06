@@ -1,10 +1,10 @@
-site_name: Engenharia de Dados SATC — TechCorp RH
-site_description: Pipeline de dados de RH com Apache Spark, Delta Lake e Apache Iceberg
+site_name: Engenharia de Dados — BikeStores
+site_description: Pipeline de dados com Apache Spark, Delta Lake, PostgreSQL e MinIO
 site_author: Ismael Damasceno Tristão
-site_url: https://ismasel.github.io/eng-de-dados
+site_url: https://IsmaelDamasceno.github.io/sql-csv-minio-spark
 
-repo_name: eng-de-dados
-repo_url: https://github.com/ismasel/eng-de-dados
+repo_name: sql-csv-minio-spark
+repo_url: https://github.com/IsmaelDamasceno/sql-csv-minio-spark
 edit_uri: edit/main/docs/
 
 docs_dir: docs
@@ -13,7 +13,6 @@ nav:
   - Contextualização: index.md
   - Apache Spark: spark.md
   - Delta Lake: delta.md
-  - Apache Iceberg: iceberg.md
 
 theme:
   name: material

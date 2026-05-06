@@ -7,182 +7,18 @@ hide:
 
 ## Cenário
 
-A **TechCorp** é uma empresa de tecnologia de médio porte com aproximadamente 200 colaboradores distribuídos em quatro departamentos. O setor de RH mantinha seus dados em um sistema legado que exportava arquivos CSV mensalmente. O objetivo deste projeto é **migrar e modernizar essa pipeline de dados** utilizando formatos de tabela abertos — **Delta Lake** e **Apache Iceberg** — sobre o engine de processamento distribuído **Apache Spark (PySpark)**.
+A **BikeStores** é uma rede fictícia de lojas de bicicletas com três unidades físicas nos Estados Unidos. O objetivo deste projeto é construir uma **pipeline de dados moderna** que extrai os dados transacionais do banco PostgreSQL, os armazena em um Object Storage (MinIO) e os transforma em tabelas Delta Lake prontas para análise.
 
-A pipeline implementa as operações fundamentais de qualquer plataforma de dados:
+A pipeline implementa as operações fundamentais de qualquer plataforma de dados lakehouse:
 
 <div class="grid cards" markdown>
 
-- :material-table-plus: **INSERT** — Carga inicial e incremental de dados
-- :material-table-edit: **UPDATE** — Reajustes salariais e mudanças de status
-- :material-table-remove: **DELETE** — Remoção de registros desligados
-- :material-table-sync: **MERGE (UPSERT)** — Sincronização incremental via API de RH
+- :material-table-plus: **INSERT** — Carga inicial e incremental de produtos e estoques
+- :material-table-edit: **UPDATE** — Ajuste de preços e atualização de status de pedidos
+- :material-table-remove: **DELETE** — Remoção de registros obsoletos
+- :material-table-sync: **MERGE (UPSERT)** — Sincronização incremental de inventário via WMS
 
 </div>
-
----
-
-## Fonte de Dados
-
-A fonte primária são **quatro arquivos CSV** exportados do sistema legado de RH da TechCorp. Esses arquivos simulam dados reais de uma empresa de médio porte.
-
-| Arquivo | Registros | Descrição |
-|---|---|---|
-| `funcionarios.csv` | 15 | Cadastro completo de colaboradores |
-| `departamentos.csv` | 4 | Estrutura organizacional |
-| `cargos.csv` | 7 | Plano de cargos e salários |
-| `folha_pagamento.csv` | 26 | Folha de Jan e Fev/2024 |
-
-Os arquivos ficam no diretório `raw/` e são lidos pelo Spark com inferência automática de schema:
-
-```python
-df_funcionarios = spark.read.csv(
-    f'{DATA_PATH}/funcionarios.csv',
-    header=True,
-    inferSchema=True
-)
-```
-
-!!! tip "Dados de exemplo"
-    Os arquivos CSV representam dados fictícios criados exclusivamente para fins didáticos. Nenhuma informação real é utilizada.
-
----
-
-## Modelo Entidade-Relacionamento
-
-O modelo de dados é composto por quatro entidades com os seguintes relacionamentos:
-
-- Um **departamento** possui vários funcionários (1:N)
-- Um **cargo** classifica vários funcionários (1:N)
-- Um **funcionário** possui várias entradas na **folha de pagamento** (1:N)
-
-```mermaid
-erDiagram
-    DEPARTAMENTOS {
-        int departamento_id PK
-        string nome_departamento
-        string sigla
-        string centro_custo
-        int gerente_id
-        double orcamento_anual
-    }
-    CARGOS {
-        int cargo_id PK
-        string titulo_cargo
-        string nivel
-        double faixa_salarial_min
-        double faixa_salarial_max
-    }
-    FUNCIONARIOS {
-        int funcionario_id PK
-        string nome
-        string email
-        string cpf
-        date data_nascimento
-        date data_admissao
-        int departamento_id FK
-        int cargo_id FK
-        double salario
-        string status
-        timestamp pipeline_ts
-        string source
-    }
-    FOLHA_PAGAMENTO {
-        int folha_id PK
-        int funcionario_id FK
-        string competencia
-        double salario_bruto
-        double desconto_inss
-        double desconto_irrf
-        double desconto_plano_saude
-        double bonus
-        double salario_liquido
-        date data_pagamento
-        timestamp pipeline_ts
-        string source
-    }
-
-    DEPARTAMENTOS ||--o{ FUNCIONARIOS : "possui"
-    CARGOS ||--o{ FUNCIONARIOS : "classifica"
-    FUNCIONARIOS ||--o{ FOLHA_PAGAMENTO : "recebe"
-```
-
----
-
-## DDL das Tabelas
-
-O DDL abaixo define o schema completo das quatro tabelas. O mesmo schema é utilizado tanto no Delta Lake quanto no Iceberg — a diferença está no engine de armazenamento (`USING delta` vs `USING iceberg`).
-
-=== "funcionarios"
-
-    ```sql
-    CREATE TABLE IF NOT EXISTS rh.funcionarios (
-        funcionario_id  INT,
-        nome            STRING,
-        email           STRING,
-        cpf             STRING,
-        data_nascimento DATE,
-        data_admissao   DATE,
-        departamento_id INT,
-        cargo_id        INT,
-        salario         DOUBLE,
-        status          STRING,   -- ATIVO | INATIVO | DESLIGADO
-        pipeline_ts     TIMESTAMP,
-        source          STRING
-    )
-    USING iceberg  -- ou: USING delta
-    PARTITIONED BY (status);
-    ```
-
-=== "departamentos"
-
-    ```sql
-    CREATE TABLE IF NOT EXISTS rh.departamentos (
-        departamento_id   INT,
-        nome_departamento STRING,
-        sigla             STRING,
-        centro_custo      STRING,
-        gerente_id        INT,
-        orcamento_anual   DOUBLE,
-        pipeline_ts       TIMESTAMP
-    )
-    USING iceberg;
-    ```
-
-=== "cargos"
-
-    ```sql
-    CREATE TABLE IF NOT EXISTS rh.cargos (
-        cargo_id           INT,
-        titulo_cargo       STRING,
-        nivel              STRING,   -- JR | PL | SR | SP | CO | GE | DI
-        faixa_salarial_min DOUBLE,
-        faixa_salarial_max DOUBLE,
-        pipeline_ts        TIMESTAMP
-    )
-    USING iceberg;
-    ```
-
-=== "folha_pagamento"
-
-    ```sql
-    CREATE TABLE IF NOT EXISTS rh.folha_pagamento (
-        folha_id             INT,
-        funcionario_id       INT,
-        competencia          STRING,   -- formato: YYYY-MM
-        salario_bruto        DOUBLE,
-        desconto_inss        DOUBLE,
-        desconto_irrf        DOUBLE,
-        desconto_plano_saude DOUBLE,
-        bonus                DOUBLE,
-        salario_liquido      DOUBLE,
-        data_pagamento       DATE,
-        pipeline_ts          TIMESTAMP,
-        source               STRING
-    )
-    USING iceberg
-    PARTITIONED BY (competencia);
-    ```
 
 ---
 
@@ -190,18 +26,148 @@ O DDL abaixo define o schema completo das quatro tabelas. O mesmo schema é util
 
 ```mermaid
 flowchart LR
-    A[("CSVs Legado\nraw/")] --> B[PySpark\nDataFrame API]
-    B --> C{Transformação\n+ Metadados}
-    C --> D[("Delta Lake\nwarehouse/delta/")]
-    C --> E[("Apache Iceberg\n/tmp/iceberg/")]
-    D --> F[SQL Analytics\nSpark SQL]
-    E --> F
+    A[("PostgreSQL\nBikeStores")] -->|JDBC| B["PySpark\nNotebook 01"]
+    B -->|CSV| C[("MinIO\nlanding-zone/")]
+    C -->|CSV| D["PySpark\nNotebook 02"]
+    D -->|Delta Lake| E[("MinIO\nbronze/")]
+    E --> F["PySpark\nNotebook 03\nDML"]
 ```
 
-O fluxo completo:
+| Etapa | Notebook | Descrição |
+|-------|----------|-----------|
+| **Extração** | `01_extract_to_landing.ipynb` | Lê as 9 tabelas via JDBC e grava CSV no bucket `landing-zone` |
+| **Conversão** | `02_landing_to_bronze.ipynb` | Lê os CSVs e converte para Delta Lake no bucket `bronze` |
+| **DML** | `03_bronze_dml.ipynb` | INSERT, UPDATE, DELETE, MERGE e Time Travel no bronze |
 
-1. **Extração** — leitura dos CSVs com `spark.read.csv(..., inferSchema=True)`
-2. **Transformação** — conversão de tipos de data, cast de salário para `DoubleType`, adição de `pipeline_ts` e `source`
-3. **Carga (INSERT)** — escrita inicial com `mode('overwrite')` no Delta e `writeTo().append()` no Iceberg
-4. **Operações DML** — UPDATE, DELETE e MERGE executados via Spark SQL e APIs nativas
-5. **Consulta** — relatórios analíticos com JOIN entre as tabelas
+---
+
+## Infraestrutura
+
+```mermaid
+flowchart TB
+    subgraph Docker Compose
+        PG["PostgreSQL 16\nlocalhost:5432\nDB: rh"]
+        MN["MinIO\nAPI: localhost:9010\nConsole: localhost:9011"]
+        MI["minio-init\nCria buckets na inicialização"]
+    end
+    MI --> MN
+    PG & MN --> NB["Jupyter Notebooks\n(PySpark)"]
+```
+
+O PostgreSQL executa `bikestores.sql` automaticamente na **primeira inicialização do volume**, criando e populando todas as 9 tabelas.
+
+!!! warning "Reinicializando o banco"
+    O init script só roda quando o volume `postgres_data` está vazio. Para recriar o banco do zero:
+    ```bash
+    docker compose down -v   # apaga os volumes
+    docker compose up -d     # sobe novamente e executa o SQL
+    ```
+
+**Credenciais:**
+
+| Serviço | Usuário | Senha | Database |
+|---------|---------|-------|----------|
+| PostgreSQL | `engdados` | `engdados` | `rh` |
+| MinIO | `minioadmin` | `minioadmin` | — |
+
+---
+
+## Fonte de Dados
+
+O dataset **BikeStores** é composto por 9 tabelas que modelam o sistema de pedidos de uma rede de lojas de bicicletas.
+
+| Tabela | Descrição | Partição no bronze |
+|--------|-----------|-------------------|
+| `brands` | Marcas de bicicletas | — |
+| `categories` | Categorias de produtos | — |
+| `customers` | Cadastro de clientes | `state` |
+| `stores` | Lojas físicas | — |
+| `staffs` | Funcionários | — |
+| `products` | Catálogo de produtos | `model_year` |
+| `stocks` | Estoque por loja/produto | — |
+| `orders` | Pedidos de venda | `order_status` |
+| `order_items` | Itens de cada pedido | — |
+
+---
+
+## Modelo Entidade-Relacionamento
+
+```mermaid
+erDiagram
+    BRANDS {
+        int brand_id PK
+        string brand_name
+    }
+    CATEGORIES {
+        int category_id PK
+        string category_name
+    }
+    PRODUCTS {
+        int product_id PK
+        string product_name
+        int brand_id FK
+        int category_id FK
+        int model_year
+        double list_price
+    }
+    STORES {
+        int store_id PK
+        string store_name
+        string phone
+        string email
+        string city
+        string state
+    }
+    STAFFS {
+        int staff_id PK
+        string first_name
+        string last_name
+        int store_id FK
+        int manager_id FK
+    }
+    CUSTOMERS {
+        int customer_id PK
+        string first_name
+        string last_name
+        string email
+        string city
+        string state
+    }
+    ORDERS {
+        int order_id PK
+        int customer_id FK
+        int order_status
+        date order_date
+        date required_date
+        date shipped_date
+        int store_id FK
+        int staff_id FK
+    }
+    ORDER_ITEMS {
+        int order_id FK
+        int item_id
+        int product_id FK
+        int quantity
+        double list_price
+        double discount
+    }
+    STOCKS {
+        int store_id FK
+        int product_id FK
+        int quantity
+    }
+
+    BRANDS ||--o{ PRODUCTS : "fabrica"
+    CATEGORIES ||--o{ PRODUCTS : "classifica"
+    STORES ||--o{ STAFFS : "emprega"
+    STORES ||--o{ ORDERS : "processa"
+    STORES ||--o{ STOCKS : "armazena"
+    STAFFS ||--o{ ORDERS : "atende"
+    CUSTOMERS ||--o{ ORDERS : "realiza"
+    ORDERS ||--o{ ORDER_ITEMS : "contém"
+    PRODUCTS ||--o{ ORDER_ITEMS : "incluso em"
+    PRODUCTS ||--o{ STOCKS : "estocado em"
+```
+
+!!! info "`order_status`"
+    Os valores possíveis são: `1` = Pending, `2` = Processing, `3` = Rejected, `4` = Completed.
