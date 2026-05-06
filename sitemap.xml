@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://ismasel.github.io/eng-de-dados/</loc>
+         <loc>https://IsmaelDamasceno.github.io/sql-csv-minio-spark/</loc>
          <lastmod>2026-05-06</lastmod>
     </url>
     <url>
-         <loc>https://ismasel.github.io/eng-de-dados/delta/</loc>
+         <loc>https://IsmaelDamasceno.github.io/sql-csv-minio-spark/delta/</loc>
          <lastmod>2026-05-06</lastmod>
     </url>
     <url>
-         <loc>https://ismasel.github.io/eng-de-dados/spark/</loc>
+         <loc>https://IsmaelDamasceno.github.io/sql-csv-minio-spark/spark/</loc>
          <lastmod>2026-05-06</lastmod>
     </url>
 </urlset>
