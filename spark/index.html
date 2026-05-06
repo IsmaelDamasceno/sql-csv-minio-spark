@@ -1,0 +1,1276 @@
+
+<!doctype html>
+<html lang="pt" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Pipeline de dados com Apache Spark, Delta Lake, PostgreSQL e MinIO">
+      
+      
+        <meta name="author" content="Ismael Damasceno Tristão">
+      
+      
+        <link rel="canonical" href="https://ismasel.github.io/eng-de-dados/spark/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../delta/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Apache Spark - Engenharia de Dados — BikeStores</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#apache-spark-e-pyspark" class="md-skip">
+          Ir para o conteúdo
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Cabeçalho">
+    <a href=".." title="Engenharia de Dados — BikeStores" class="md-header__button md-logo" aria-label="Engenharia de Dados — BikeStores" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Engenharia de Dados — BikeStores
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Apache Spark
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="blue"  aria-label="Modo escuro"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Modo escuro" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="blue"  aria-label="Modo claro"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Modo claro" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Buscar" placeholder="Buscar" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Pesquisar">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Limpar" aria-label="Limpar" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Inicializando a pesquisa
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ismasel/eng-de-dados" title="Ir ao repositório" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eng-de-dados
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Abas" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contextualização
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Apache Spark
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../delta/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Delta Lake
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navegação" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Engenharia de Dados — BikeStores" class="md-nav__button md-logo" aria-label="Engenharia de Dados — BikeStores" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Engenharia de Dados — BikeStores
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ismasel/eng-de-dados" title="Ir ao repositório" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    eng-de-dados
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contextualização
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Apache Spark
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Apache Spark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Índice">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Índice
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#o-que-e-o-apache-spark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        O que é o Apache Spark?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#arquitetura" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arquitetura
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Arquitetura">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#modo-local" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modo Local
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conceitos-fundamentais" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conceitos Fundamentais
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Conceitos Fundamentais">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rdd-vs-dataframe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RDD vs DataFrame
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lazy-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lazy Evaluation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#particoes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partições
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sparksession-com-delta-lake-e-minio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SparkSession com Delta Lake e MinIO
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SparkSession com Delta Lake e MinIO">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#notebook-01-extracao-postgresql-minio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notebook 01 — Extração (PostgreSQL + MinIO)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notebooks-02-e-03-apenas-minio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notebooks 02 e 03 — Apenas MinIO
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dataframe-api-operacoes-essenciais" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DataFrame API — Operações Essenciais
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DataFrame API — Operações Essenciais">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#leitura" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Leitura
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transformacoes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transformações
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#escrita" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Escrita
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dataframe-api-vs-sql-cru" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DataFrame API vs SQL cru
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../delta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Delta Lake
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Índice">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Índice
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#o-que-e-o-apache-spark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        O que é o Apache Spark?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#arquitetura" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arquitetura
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Arquitetura">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#modo-local" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modo Local
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conceitos-fundamentais" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conceitos Fundamentais
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Conceitos Fundamentais">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rdd-vs-dataframe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RDD vs DataFrame
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lazy-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lazy Evaluation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#particoes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partições
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sparksession-com-delta-lake-e-minio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SparkSession com Delta Lake e MinIO
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SparkSession com Delta Lake e MinIO">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#notebook-01-extracao-postgresql-minio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notebook 01 — Extração (PostgreSQL + MinIO)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notebooks-02-e-03-apenas-minio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notebooks 02 e 03 — Apenas MinIO
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dataframe-api-operacoes-essenciais" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DataFrame API — Operações Essenciais
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DataFrame API — Operações Essenciais">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#leitura" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Leitura
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transformacoes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transformações
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#escrita" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Escrita
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dataframe-api-vs-sql-cru" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DataFrame API vs SQL cru
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="apache-spark-e-pyspark">Apache Spark e PySpark</h1>
+<h2 id="o-que-e-o-apache-spark">O que é o Apache Spark?</h2>
+<p><strong>Apache Spark</strong> é um engine de processamento de dados em larga escala, open-source, criado na UC Berkeley em 2009 e doado à Apache Software Foundation em 2013. Ele processa dados <strong>em memória</strong> (in-memory), sendo até 100× mais rápido que o MapReduce para operações iterativas.</p>
+<p>Spark não é um sistema de armazenamento — ele <strong>processa</strong> dados de fontes externas como S3, bancos de dados relacionais via JDBC, Kafka, e formatos de tabela aberta como <strong>Delta Lake</strong>.</p>
+<div class="admonition info">
+<p class="admonition-title">Versão utilizada neste projeto</p>
+<p><strong>Apache Spark 3.5.0</strong> com <strong>PySpark 3.5.0</strong> e <strong>Delta Spark 3.1.0</strong>.</p>
+</div>
+<hr />
+<h2 id="arquitetura">Arquitetura</h2>
+<p>O Spark opera em um modelo <strong>mestre/trabalhador</strong> composto por três camadas:</p>
+<pre class="mermaid"><code>flowchart TB
+    subgraph Cliente
+        D[Driver Program\nSparkContext / SparkSession]
+    end
+    subgraph Cluster
+        CM[Cluster Manager\nYARN · Kubernetes · Standalone]
+        W1[Worker Node\nExecutor 1]
+        W2[Worker Node\nExecutor 2]
+        W3[Worker Node\nExecutor 3]
+    end
+    D &lt;--&gt; CM
+    CM --&gt; W1
+    CM --&gt; W2
+    CM --&gt; W3
+    D &lt;-.-&gt;|Tasks| W1
+    D &lt;-.-&gt;|Tasks| W2
+    D &lt;-.-&gt;|Tasks| W3</code></pre>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Papel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Driver</strong></td>
+<td>Ponto de entrada da aplicação. Cria o <code>SparkContext</code>, traduz o código do usuário em um plano de execução (DAG) e distribui <em>tasks</em> para os executors.</td>
+</tr>
+<tr>
+<td><strong>Cluster Manager</strong></td>
+<td>Aloca recursos no cluster. Pode ser YARN, Kubernetes, Mesos ou o modo Standalone.</td>
+</tr>
+<tr>
+<td><strong>Executor</strong></td>
+<td>Processo JVM que roda em cada Worker Node. Executa as <em>tasks</em> e mantém partições de dados em memória/disco.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="modo-local">Modo Local</h3>
+<p>Neste projeto, o Spark roda em <strong>modo local</strong> (<code>local[*]</code>), onde Driver e Executor são o mesmo processo JVM. Ideal para desenvolvimento e aprendizado — não requer um cluster real.</p>
+<hr />
+<h2 id="conceitos-fundamentais">Conceitos Fundamentais</h2>
+<h3 id="rdd-vs-dataframe">RDD vs DataFrame</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>RDD</th>
+<th>DataFrame</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Nível</strong></td>
+<td>Baixo (objetos Java/Python)</td>
+<td>Alto (colunas tipadas)</td>
+</tr>
+<tr>
+<td><strong>Otimização</strong></td>
+<td>Manual</td>
+<td>Automática via Catalyst</td>
+</tr>
+<tr>
+<td><strong>API</strong></td>
+<td>Funcional (map, filter, reduce)</td>
+<td>SQL-like (select, filter, groupBy)</td>
+</tr>
+<tr>
+<td><strong>Quando usar</strong></td>
+<td>Transformações não estruturadas</td>
+<td>Dados tabulares (99% dos casos)</td>
+</tr>
+</tbody>
+</table>
+<p>Este projeto usa exclusivamente <strong>DataFrames</strong> e a <strong>DataFrame API (Column API)</strong>, que são a abordagem moderna e recomendada do Spark.</p>
+<h3 id="lazy-evaluation">Lazy Evaluation</h3>
+<p>O Spark não executa transformações imediatamente. Ele constrói um grafo de operações (DAG) e só materializa o resultado quando uma <strong>action</strong> é chamada:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Transformações (lazy — não executam ainda)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">spark</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;delta&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BRONZE_BUCKET</span><span class="si">}</span><span class="s2">/products&quot;</span><span class="p">)</span>
+<span class="n">df_2016</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;model_year&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2016</span><span class="p">)</span>
+<span class="n">df_result</span> <span class="o">=</span> <span class="n">df_2016</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s2">&quot;product_id&quot;</span><span class="p">,</span> <span class="s2">&quot;product_name&quot;</span><span class="p">,</span> <span class="s2">&quot;list_price&quot;</span><span class="p">)</span>
+
+<span class="c1"># Action — aqui o Spark executa TODO o plano</span>
+<span class="n">df_result</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>     <span class="c1"># dispara a execução</span>
+<span class="n">df_result</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>    <span class="c1"># outra action</span>
+</code></pre></div>
+<h3 id="particoes">Partições</h3>
+<p>O Spark distribui os dados em <strong>partições</strong> — fatias do DataFrame processadas em paralelo. O particionamento físico no Delta Lake é controlado por <code>.partitionBy()</code> na escrita:</p>
+<div class="highlight"><pre><span></span><code><span class="n">df</span><span class="o">.</span><span class="n">write</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;delta&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">partitionBy</span><span class="p">(</span><span class="s2">&quot;model_year&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</code></pre></div>
+<p>Isso gera pastas no MinIO:
+<div class="highlight"><pre><span></span><code>s3a://bronze/products/
+├── model_year=2016/
+│   └── part-00000-....parquet
+├── model_year=2017/
+│   └── part-00000-....parquet
+└── model_year=2018/
+    └── part-00000-....parquet
+</code></pre></div></p>
+<hr />
+<h2 id="sparksession-com-delta-lake-e-minio">SparkSession com Delta Lake e MinIO</h2>
+<p><code>SparkSession</code> é o ponto de entrada único para todas as APIs do Spark. A configuração deste projeto conecta três sistemas: <strong>Delta Lake</strong>, <strong>MinIO (S3A)</strong> e, no notebook de extração, o <strong>PostgreSQL via JDBC</strong>.</p>
+<h3 id="notebook-01-extracao-postgresql-minio">Notebook 01 — Extração (PostgreSQL + MinIO)</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pyspark.sql</span><span class="w"> </span><span class="kn">import</span> <span class="n">SparkSession</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">delta</span><span class="w"> </span><span class="kn">import</span> <span class="n">configure_spark_with_delta_pip</span>
+
+<span class="n">MINIO_ENDPOINT</span>   <span class="o">=</span> <span class="s2">&quot;http://localhost:9010&quot;</span>
+<span class="n">MINIO_ACCESS_KEY</span> <span class="o">=</span> <span class="s2">&quot;minioadmin&quot;</span>
+<span class="n">MINIO_SECRET_KEY</span> <span class="o">=</span> <span class="s2">&quot;minioadmin&quot;</span>
+
+<span class="n">builder</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">SparkSession</span><span class="o">.</span><span class="n">builder</span>
+    <span class="o">.</span><span class="n">appName</span><span class="p">(</span><span class="s2">&quot;extract_to_landing&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="s2">&quot;spark.sql.extensions&quot;</span><span class="p">,</span> <span class="s2">&quot;io.delta.sql.DeltaSparkSessionExtension&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="s2">&quot;spark.sql.catalog.spark_catalog&quot;</span><span class="p">,</span> <span class="s2">&quot;org.apache.spark.sql.delta.catalog.DeltaCatalog&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="s2">&quot;spark.hadoop.fs.s3a.endpoint&quot;</span><span class="p">,</span>               <span class="n">MINIO_ENDPOINT</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="s2">&quot;spark.hadoop.fs.s3a.access.key&quot;</span><span class="p">,</span>             <span class="n">MINIO_ACCESS_KEY</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="s2">&quot;spark.hadoop.fs.s3a.secret.key&quot;</span><span class="p">,</span>             <span class="n">MINIO_SECRET_KEY</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="s2">&quot;spark.hadoop.fs.s3a.path.style.access&quot;</span><span class="p">,</span>      <span class="s2">&quot;true&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="s2">&quot;spark.hadoop.fs.s3a.impl&quot;</span><span class="p">,</span>                   <span class="s2">&quot;org.apache.hadoop.fs.s3a.S3AFileSystem&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="s2">&quot;spark.hadoop.fs.s3a.connection.ssl.enabled&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">spark</span> <span class="o">=</span> <span class="n">configure_spark_with_delta_pip</span><span class="p">(</span>
+    <span class="n">builder</span><span class="p">,</span>
+    <span class="n">extra_packages</span><span class="o">=</span><span class="p">[</span>
+        <span class="s2">&quot;org.postgresql:postgresql:42.7.3&quot;</span><span class="p">,</span>       <span class="c1"># (1)</span>
+        <span class="s2">&quot;org.apache.hadoop:hadoop-aws:3.3.4&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;com.amazonaws:aws-java-sdk-bundle:1.12.262&quot;</span><span class="p">,</span>
+    <span class="p">],</span>
+<span class="p">)</span><span class="o">.</span><span class="n">getOrCreate</span><span class="p">()</span>
+</code></pre></div>
+<ol>
+<li>O driver JDBC do PostgreSQL precisa estar em <code>extra_packages</code> — <strong>não</strong> em <code>spark.jars.packages</code>, pois <code>configure_spark_with_delta_pip</code> sobrescreveria esse config.</li>
+</ol>
+<h3 id="notebooks-02-e-03-apenas-minio">Notebooks 02 e 03 — Apenas MinIO</h3>
+<div class="highlight"><pre><span></span><code><span class="n">spark</span> <span class="o">=</span> <span class="n">configure_spark_with_delta_pip</span><span class="p">(</span>
+    <span class="n">builder</span><span class="p">,</span>
+    <span class="n">extra_packages</span><span class="o">=</span><span class="p">[</span>
+        <span class="s2">&quot;org.apache.hadoop:hadoop-aws:3.3.4&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;com.amazonaws:aws-java-sdk-bundle:1.12.262&quot;</span><span class="p">,</span>
+    <span class="p">],</span>
+<span class="p">)</span><span class="o">.</span><span class="n">getOrCreate</span><span class="p">()</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title"><code>configure_spark_with_delta_pip</code> e <code>spark.jars.packages</code></p>
+<p><code>configure_spark_with_delta_pip</code> chama <code>.config("spark.jars.packages", ...)</code> internamente para adicionar o Delta. Se você também setar <code>spark.jars.packages</code> no builder, a função <strong>sobrescreve seu valor</strong>. Use sempre <code>extra_packages</code> para adicionar JARs extras.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title"><code>.getOrCreate()</code> e sessões existentes</p>
+<p>Se uma <code>SparkSession</code> já existe no kernel Jupyter, <code>.getOrCreate()</code> retorna a sessão existente e <strong>ignora todas as configs novas</strong>. Reinicie o kernel antes de alterar qualquer configuração.</p>
+</div>
+<hr />
+<h2 id="dataframe-api-operacoes-essenciais">DataFrame API — Operações Essenciais</h2>
+<h3 id="leitura">Leitura</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Via JDBC (PostgreSQL)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">spark</span><span class="o">.</span><span class="n">read</span>
+    <span class="o">.</span><span class="n">jdbc</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">JDBC_URL</span><span class="p">,</span> <span class="n">table</span><span class="o">=</span><span class="s2">&quot;products&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="n">jdbc_props</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># CSV do MinIO (landing-zone)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">spark</span><span class="o">.</span><span class="n">read</span>
+    <span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;header&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;inferSchema&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">csv</span><span class="p">(</span><span class="s2">&quot;s3a://landing-zone/products&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Delta Lake (bronze)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">spark</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;delta&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;s3a://bronze/products&quot;</span><span class="p">)</span>
+
+<span class="c1"># Delta com Time Travel</span>
+<span class="n">df</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">spark</span><span class="o">.</span><span class="n">read</span>
+    <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;delta&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">option</span><span class="p">(</span><span class="s2">&quot;versionAsOf&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;s3a://bronze/products&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="transformacoes">Transformações</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pyspark.sql.functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">col</span><span class="p">,</span> <span class="n">current_timestamp</span><span class="p">,</span> <span class="n">lit</span><span class="p">,</span> <span class="nb">round</span> <span class="k">as</span> <span class="n">spark_round</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pyspark.sql.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">IntegerType</span><span class="p">,</span> <span class="n">DoubleType</span>
+
+<span class="n">df_clean</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">df</span>
+    <span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="s2">&quot;bronze_ingested_at&quot;</span><span class="p">,</span> <span class="n">current_timestamp</span><span class="p">())</span>
+    <span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="s2">&quot;source_system&quot;</span><span class="p">,</span>      <span class="n">lit</span><span class="p">(</span><span class="s2">&quot;postgres&quot;</span><span class="p">))</span>
+    <span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="s2">&quot;product_id&quot;</span><span class="p">,</span>         <span class="n">col</span><span class="p">(</span><span class="s2">&quot;product_id&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">IntegerType</span><span class="p">()))</span>
+    <span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="s2">&quot;list_price&quot;</span><span class="p">,</span>         <span class="n">col</span><span class="p">(</span><span class="s2">&quot;list_price&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">DoubleType</span><span class="p">()))</span>
+    <span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;model_year&quot;</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2016</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s2">&quot;product_id&quot;</span><span class="p">,</span> <span class="s2">&quot;product_name&quot;</span><span class="p">,</span> <span class="s2">&quot;brand_id&quot;</span><span class="p">,</span> <span class="s2">&quot;model_year&quot;</span><span class="p">,</span> <span class="s2">&quot;list_price&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="escrita">Escrita</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Sobrescreve (carga inicial)</span>
+<span class="n">df</span><span class="o">.</span><span class="n">write</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;delta&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">mode</span><span class="p">(</span><span class="s2">&quot;overwrite&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">partitionBy</span><span class="p">(</span><span class="s2">&quot;model_year&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+<span class="c1"># Adiciona (carga incremental)</span>
+<span class="n">df</span><span class="o">.</span><span class="n">write</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;delta&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">mode</span><span class="p">(</span><span class="s2">&quot;append&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">partitionBy</span><span class="p">(</span><span class="s2">&quot;model_year&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="dataframe-api-vs-sql-cru">DataFrame API vs SQL cru</h2>
+<p>Este projeto adota a <strong>DataFrame API</strong> para todas as operações, evitando strings SQL. A vantagem é que os erros aparecem em tempo de execução com stack trace Python, e as expressões são verificáveis com autocomplete.</p>
+<table>
+<thead>
+<tr>
+<th>Operação</th>
+<th>SQL cru</th>
+<th>DataFrame API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Filtro</td>
+<td><code>"status = 'ATIVO'"</code></td>
+<td><code>col("status") == "ATIVO"</code></td>
+</tr>
+<tr>
+<td>Condição composta</td>
+<td><code>"a = 1 AND b IS NULL"</code></td>
+<td><code>(col("a") == 1) &amp; col("b").isNull()</code></td>
+</tr>
+<tr>
+<td>Expressão numérica</td>
+<td><code>"price * 0.85"</code></td>
+<td><code>col("price") * 0.85</code></td>
+</tr>
+<tr>
+<td>Função</td>
+<td><code>"current_timestamp()"</code></td>
+<td><code>current_timestamp()</code></td>
+</tr>
+<tr>
+<td>Arredondamento</td>
+<td><code>"ROUND(price, 2)"</code></td>
+<td><code>spark_round(col("price"), 2)</code></td>
+</tr>
+</tbody>
+</table>
+<p>Exemplo de UPDATE com DataFrame API via <code>DeltaTable</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">delta.tables</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeltaTable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pyspark.sql.functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">col</span><span class="p">,</span> <span class="n">current_timestamp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pyspark.sql.functions</span><span class="w"> </span><span class="kn">import</span> <span class="nb">round</span> <span class="k">as</span> <span class="n">spark_round</span>
+
+<span class="n">delta_products</span> <span class="o">=</span> <span class="n">DeltaTable</span><span class="o">.</span><span class="n">forPath</span><span class="p">(</span><span class="n">spark</span><span class="p">,</span> <span class="s2">&quot;s3a://bronze/products&quot;</span><span class="p">)</span>
+
+<span class="n">delta_products</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+    <span class="n">condition</span><span class="o">=</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;model_year&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2016</span><span class="p">,</span>
+    <span class="nb">set</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;list_price&quot;</span><span class="p">:</span>         <span class="n">spark_round</span><span class="p">(</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;list_price&quot;</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.85</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+        <span class="s2">&quot;bronze_ingested_at&quot;</span><span class="p">:</span> <span class="n">current_timestamp</span><span class="p">(),</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Voltar ao topo
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Rodapé" >
+        
+          
+          <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Anterior: Contextualização">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Anterior
+              </span>
+              <div class="md-ellipsis">
+                Contextualização
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../delta/" class="md-footer__link md-footer__link--next" aria-label="Próximo: Delta Lake">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Próximo
+              </span>
+              <div class="md-ellipsis">
+                Delta Lake
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2024 — Ismael Damasceno Tristão — Todos os direitos reservados.
+    </div>
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/ismasel" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.footer", "navigation.tabs", "navigation.tabs.sticky", "navigation.path", "navigation.top", "navigation.next-prev", "content.code.copy", "content.code.annotate", "search.highlight", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copiado para \u00e1rea de transfer\u00eancia", "clipboard.copy": "Copiar para \u00e1rea de transfer\u00eancia", "search.result.more.one": "Mais 1 nesta p\u00e1gina", "search.result.more.other": "Mais # nesta p\u00e1gina", "search.result.none": "Nenhum resultado encontrado", "search.result.one": "1 resultado encontrado", "search.result.other": "# resultados encontrados", "search.result.placeholder": "Digite para iniciar a busca", "search.result.term.missing": "Ausente", "select.version": "Selecione a vers\u00e3o"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
